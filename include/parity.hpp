@@ -17,12 +17,12 @@ namespace RAID6
     public:
         static void XOR_parity(int block_size, vector<char *> data, char *parity)
         {
-            for (int i = 0; i < block_size; i++)
+            memcpy(parity, data[0], block_size);
+            for (int i = 1; i < data.size(); i++)
             {
-                parity[i] = 0;
-                for (int j = 0; j < data.size(); j++)
+                for (int j = 0; j < block_size; j++)
                 {
-                    parity[i] ^= data[j][i];
+                    parity[j] ^= data[i][j];
                 }
             }
         }
@@ -36,6 +36,7 @@ namespace RAID6
             else if (policy == "RS")
             {
                 // TODO
+                // urgent
             }
         }
     };
