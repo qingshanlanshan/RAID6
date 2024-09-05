@@ -43,6 +43,7 @@ namespace RAID6
             this->block_size = block_size;
 
             create_folders(path, num_disks);
+            parity = new Parity(num_disks);
 
             // write config file
             fstream config_file(get_config_path(), std::ios::out);
@@ -55,6 +56,11 @@ namespace RAID6
             config_file << block_size << endl;
             config_file.close();
             return 0;
+        }
+
+        ~RAID6()
+        {
+            delete parity;
         }
 
         // recover the data from the config file
@@ -90,6 +96,7 @@ namespace RAID6
 
         // wrapper functions for read and write
         // should be able to handle parity and data larger than block size
+        // TODO: handle new block creation, #blocks should be written to config file
         int get(int disk, size_t position, int data_len, char *data)
         {
             // get the starting block and offset
@@ -121,18 +128,22 @@ namespace RAID6
             while(data_len > 0)
             {
                 int len = std::min(data_len, block_size - offset);
-
+                int rs_index = 0;
+                for(int i=0;i<block;++i)
+                {
+                    if(!is_parity_block(disk, i))
+                        rs_index++;
+                }
                 // load old data
                 char old_data[block_size];
                 read(disk, block, offset, len, old_data);
-
+                
                 // calculate parity
                 for(int policy=0; policy<2; policy++)
                 {
                     char old_parity[block_size];
                     read(get_parity_disk(block, policy), block, offset, len, old_parity);
-                    Parity::calculate_parity(policies[policy], len, {old_data, data+data_offset}, old_data);
-                    Parity::calculate_parity(policies[policy], len, {old_parity, old_data}, old_parity);
+                    parity->update_block_parity(policies[policy], len, old_data, data + data_offset, old_parity, rs_index);
                     write(get_parity_disk(block, policy), block, offset, len, old_parity);
                 }
 
@@ -151,6 +162,7 @@ namespace RAID6
         int num_disks;
         int block_size;
         string policies[2] = {"XOR", "RS"};
+        Parity* parity;
         string get_disk_path(int disk)
         {
             return path + "disk" + std::to_string(disk);
@@ -173,9 +185,9 @@ namespace RAID6
 
         void data_position_to_block_offset(int disk, size_t position, int &block, int &offset)
         {
-            int offset = position % block_size;
+            offset = position % block_size;
             int num_data_block = position / block_size;
-            int block = num_data_block/(num_disks-2)*num_disks;
+            block = num_data_block/(num_disks-2)*num_disks;
             int count = num_data_block%(num_disks-2);
             for(int i=0; i<num_disks || count==0; i++)
             {
