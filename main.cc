@@ -1,24 +1,40 @@
 #include "include/RAID6.hpp"
 #include <iostream>
 
-// test the RAID6 class
+using namespace std;
 int main()
 {
-    RAID6::Parity parity(4);
-    char data0[4] = {0b00000001, 0b00000010, 0b00000011, 0b00000100};
-    char data1[4] = {0b00000101, 0b00000110, 0b00000111, 0b00001000};
-    char data2[4];
-    parity.calculate_parity("XOR", 4, {data0,data1}, data2);
-    for(int i=0; i<4; i++)
+    RAID6::RAID6 raid6;
+    int block_size=16;
+    raid6.init("data/", 6, 6, block_size);
+
+    char data_ones[block_size];
+    memset(data_ones, 0x01, block_size);
+    char data_ff[block_size];
+    memset(data_ff, 0xff, block_size);
+    raid6.put(0, 0, block_size, data_ones);
+    raid6.put(1, 0, block_size, data_ff);
+    for (int i = 0; i < block_size; i++)
     {
-        std::cout << (int)data2[i] << " ";
+        cout << (int)data_ones[i] << " ";
     }
-    std::cout << std::endl;
-    parity.calculate_parity("RS", 4, {data0,data1}, data2);
-    for(int i=0; i<4; i++)
+    cout << endl;
+
+    char err[1] = {0};
+    raid6.put_no_parity(0, 0, 1, err);
+    raid6.get(0, 0, block_size, data_ones);
+    for (int i = 0; i < block_size; i++)
     {
-        std::cout << (int)data2[i] << " ";
+        cout << (int)data_ones[i] << " ";
     }
-    std::cout << std::endl;
+    cout << endl;
+
+    raid6.recover({{0, 0}}, 1);
+    raid6.get(0, 0, block_size, data_ones);
+    for (int i = 0; i < block_size; i++)
+    {
+        cout << (int)data_ones[i] << " ";
+    }
+    cout << endl;
     return 0;
 }
