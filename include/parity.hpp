@@ -60,7 +60,11 @@ namespace RAID6
         }
         unsigned char gf_pow_02(int n)
         {
-            n = (n % 256 + 256) % 256;
+            while (n < 0)
+            {
+                n += 255;
+            }
+            n %= 255;
             return rs_coefficients[n];
         }
         void cal_XOR_parity(size_t block_size, vector<char *> data, char *parity)

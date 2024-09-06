@@ -14,23 +14,52 @@ int main()
     memset(data_ff, 0xff, block_size);
     raid6.put(0, 0, block_size, data_ones);
     raid6.put(1, 0, block_size, data_ff);
+    cout << "disk 1 block 0: ";
+    for (int i = 1; i < block_size; i++)
+    {
+        cout << (int)data_ff[i] << " ";
+    }
+    cout << endl;
+    raid6.get(4, 0, block_size, data_ones);
+    cout << "disk 4 block 0: ";
     for (int i = 0; i < block_size; i++)
     {
         cout << (int)data_ones[i] << " ";
     }
     cout << endl;
 
+    cout<<"introduce error"<<endl;
     char err[1] = {0};
-    raid6.put_no_parity(0, 0, 1, err);
-    raid6.get(0, 0, block_size, data_ones);
+    raid6.put_no_parity(1, 0, 1, err);
+    raid6.get(1, 0, block_size, data_ones);
+    cout << "disk 1 block 0: ";
     for (int i = 0; i < block_size; i++)
     {
         cout << (int)data_ones[i] << " ";
     }
     cout << endl;
 
-    raid6.recover({{0, 0}}, 1);
-    raid6.get(0, 0, block_size, data_ones);
+    raid6.put_no_parity(4, 0, 1, err);
+    raid6.get(4, 0, block_size, data_ones);
+    cout << "disk 4 block 0: ";
+    for (int i = 0; i < block_size; i++)
+    {
+        cout << (int)data_ones[i] << " ";
+    }
+    cout << endl;
+
+    cout<<"recover"<<endl;
+
+    raid6.recover({{1, 0}, {4, 0}}, 5);
+    raid6.get(1, 0, block_size, data_ones);
+    cout << "disk 1 block 0: ";
+    for (int i = 0; i < block_size; i++)
+    {
+        cout << (int)data_ones[i] << " ";
+    }
+    cout << endl;
+    raid6.get(4, 0, block_size, data_ones);
+    cout << "disk 4 block 0: ";
     for (int i = 0; i < block_size; i++)
     {
         cout << (int)data_ones[i] << " ";

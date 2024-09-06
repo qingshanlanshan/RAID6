@@ -137,7 +137,7 @@ namespace RAID6
                 assert(is_parity_block(block_list[1].first, block_list[1].second));
                 // determine the policy of the missing parity block
                 int policy=0;
-                if(get_parity_disk(block_list[0].second, 0)==block_list[1].first)
+                if(get_parity_disk(block_list[0].second, 0)!=block_list[1].first)
                     policy=1;
                 
                 char policy_block[block_size];
@@ -516,7 +516,7 @@ namespace RAID6
         {
             int disk_q = get_parity_disk(block, 1);
             vector<char *> data;
-            int coef_pow=0;
+            int coef_idx=0, coef_pow=0;
             for (int i = 0; i < num_disks; ++i)
             {
                 if (is_parity_block(i, block))
@@ -525,6 +525,7 @@ namespace RAID6
                 if(i==disk)
                 {
                     memset(data_block, 0, block_size);
+                    coef_pow=parity->gf_pow_02(-coef_idx);
                 }
                 else
                 {
@@ -532,7 +533,7 @@ namespace RAID6
                         return -1;
                 }
                 data.push_back(data_block);
-                coef_pow++;
+                coef_idx++;
             }
             // Q_x
             char new_parity[block_size];
@@ -550,8 +551,8 @@ namespace RAID6
             // Q+Q_x
             parity->XOR_block(parity_block, new_parity, block_size, parity_block);
 
-            // (Q+Q_x)/g^(-x)
-            parity->gf_multiply_byte_block(parity_block, parity->gf_pow_02(coef_pow), block_size, parity_block);
+            // (Q+Q_x)*g^(-x)
+            parity->gf_multiply_byte_block(parity_block, coef_pow, block_size, parity_block);
 
             if (write(disk, block, 0, block_size, parity_block))
                 return -1;
