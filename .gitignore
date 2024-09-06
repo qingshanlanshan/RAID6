@@ -1,0 +1,7 @@
+.vscode
+a.*
+RAID_DISK
+*.gch
+data
+.DS_Store
+main.cc

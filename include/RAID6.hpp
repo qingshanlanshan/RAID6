@@ -88,32 +88,81 @@ namespace RAID6
             return 0;
         }
 
+        int recover(vector<std::pair<int, int>> block_list)
+        {
+            if (block_list.size() == 0)
+            {
+                cerr << "Error: no block missing" << endl;
+                return -1;
+            }
+            else if (block_list.size() == 1)
+            {
+                if (is_parity_block(block_list[0].first, block_list[0].second))
+                {
+                    recover(block_list, 2);
+                }
+                else
+                {
+                    recover(block_list, 1);
+                }
+            }
+            else if (block_list.size() == 2)
+            {
+                if (block_list[0].second!=block_list[1].second)
+                {
+                    cerr << "Error: two blocks missing are not in the same stripe" << endl;
+                    return -1;
+                }
+                bool is_parity_1, is_parity_2;
+                is_parity_1 = is_parity_block(block_list[0].first, block_list[0].second);
+                is_parity_2 = is_parity_block(block_list[1].first, block_list[1].second);
+                if (is_parity_1 && is_parity_2)
+                {
+                    recover(block_list, 4);
+                }
+                else if (!is_parity_1 && !is_parity_2)
+                {
+                    recover(block_list, 3);
+                }
+                else
+                {
+                    recover(block_list, 5);
+                }
+            }
+            else
+            {
+                cerr << "Error: too many blocks missing" << endl;
+                return -1;
+            }
+            return 0;
+        }
+
         // to be tested
-        int recover(vector<std::pair<int,int>> block_list, int case_num)
+        int recover(vector<std::pair<int, int>> block_list, int case_num)
         {
             if (case_num == 1)
             {
                 // 1. one data block is missing
                 // recover from P
-                auto disk=block_list[0].first;
-                auto block=block_list[0].second;
+                auto disk = block_list[0].first;
+                auto block = block_list[0].second;
                 rebuild_single_p(disk, block);
             }
             else if (case_num == 2)
             {
                 // 2. one parity block is missing
                 // just recalculate the parity
-                auto disk=block_list[0].first;
-                auto block=block_list[0].second;
+                auto disk = block_list[0].first;
+                auto block = block_list[0].second;
                 char parity_block[block_size];
                 cal_parity(block, 0, parity_block);
                 write(get_parity_disk(block, 0), block, 0, block_size, parity_block);
             }
             else if (case_num == 3)
             {
-                // 3. two data blocks are missing   
-                assert(block_list.size()==2);
-                assert(block_list[0].second==block_list[1].second);
+                // 3. two data blocks are missing
+                assert(block_list.size() == 2);
+                assert(block_list[0].second == block_list[1].second);
                 rebuild_double(block_list[0].first, block_list[1].first, block_list[0].second);
             }
             else if (case_num == 4)
@@ -122,8 +171,8 @@ namespace RAID6
                 // assert(block_list.size()==2);
                 for (int i = 0; i < 2; i++)
                 {
-                    auto disk=block_list[i].first;
-                    auto block=block_list[i].second;
+                    auto disk = block_list[i].first;
+                    auto block = block_list[i].second;
                     char parity_block[block_size];
                     cal_parity(block, i, parity_block);
                     write(get_parity_disk(block, i), block, 0, block_size, parity_block);
@@ -132,16 +181,16 @@ namespace RAID6
             else if (case_num == 5)
             {
                 // 5. one data block and one parity block are missing
-                assert(block_list.size()==2);
-                assert(block_list[0].second==block_list[1].second);
+                assert(block_list.size() == 2);
+                assert(block_list[0].second == block_list[1].second);
                 assert(is_parity_block(block_list[1].first, block_list[1].second));
                 // determine the policy of the missing parity block
-                int policy=0;
-                if(get_parity_disk(block_list[0].second, 0)!=block_list[1].first)
-                    policy=1;
-                
+                int policy = 0;
+                if (get_parity_disk(block_list[0].second, 0) != block_list[1].first)
+                    policy = 1;
+
                 char policy_block[block_size];
-                if(policy==0)
+                if (policy == 0)
                 {
                     rebuild_single_q(block_list[0].first, block_list[0].second);
                     cal_parity(block_list[1].second, 0, policy_block);
@@ -149,13 +198,13 @@ namespace RAID6
                 else
                 {
                     rebuild_single_p(block_list[0].first, block_list[0].second);
-                    cal_parity(block_list[1].second, 1, policy_block);   
+                    cal_parity(block_list[1].second, 1, policy_block);
                 }
                 write(block_list[1].first, block_list[1].second, 0, block_size, policy_block);
             }
             return 0;
         }
-        
+
         int check()
         {
             for (int block = 0; block < num_blocks; ++block)
@@ -167,7 +216,7 @@ namespace RAID6
                 {
                     if (!is_parity_block(disk, block))
                     {
-                        char* data_block = new char[block_size];
+                        char *data_block = new char[block_size];
                         read(disk, block, 0, block_size, data_block);
                         data.push_back(data_block);
                     }
@@ -266,6 +315,7 @@ namespace RAID6
             write(disk, position / block_size, position % block_size, data_len, data);
             return 0;
         }
+
     private:
         string path;
         int num_disks;
@@ -396,7 +446,7 @@ namespace RAID6
             {
                 if (!is_parity_block(i, block))
                 {
-                    char* data_block = new char[block_size];
+                    char *data_block = new char[block_size];
                     if (read(i, block, 0, block_size, data_block))
                         return -1;
                     data.push_back(data_block);
@@ -415,7 +465,7 @@ namespace RAID6
             // disk idx to data idx
             int idx_x = 0, idx_y = 0;
             vector<char *> data;
-            for (int i=0;i<num_disks;++i)
+            for (int i = 0; i < num_disks; ++i)
             {
                 if (is_parity_block(i, block))
                     continue;
@@ -423,8 +473,8 @@ namespace RAID6
                     idx_x++;
                 if (i < disk_y)
                     idx_y++;
-                char* data_block = new char[block_size];
-                if(i==disk_x||i==disk_y)
+                char *data_block = new char[block_size];
+                if (i == disk_x || i == disk_y)
                 {
                     memset(data_block, 0, block_size);
                 }
@@ -458,7 +508,7 @@ namespace RAID6
             char parity_p_xy[block_size], parity_q_xy[block_size];
             parity->calculate_parity(policies[0], block_size, data, parity_p_xy);
             parity->calculate_parity(policies[1], block_size, data, parity_q_xy);
-            
+
             // D_x = A*(P+P_xy)+B*(Q+Q_xy)
             char middle1[block_size], middle2[block_size];
             parity->XOR_block(parity_p, parity_p_xy, block_size, middle1);
@@ -491,13 +541,13 @@ namespace RAID6
             {
                 if (i != disk && !is_parity_block(i, block))
                 {
-                    char* data_block = new char[block_size];
+                    char *data_block = new char[block_size];
                     if (read(i, block, 0, block_size, data_block))
                         return -1;
                     data.push_back(data_block);
                 }
             }
-            char* parity_block = new char[block_size];
+            char *parity_block = new char[block_size];
             if (read(disk_p, block, 0, block_size, parity_block))
                 return -1;
             data.push_back(parity_block);
@@ -516,16 +566,16 @@ namespace RAID6
         {
             int disk_q = get_parity_disk(block, 1);
             vector<char *> data;
-            int coef_idx=0, coef_pow=0;
+            int coef_idx = 0, coef_pow = 0;
             for (int i = 0; i < num_disks; ++i)
             {
                 if (is_parity_block(i, block))
                     continue;
-                char* data_block = new char[block_size];
-                if(i==disk)
+                char *data_block = new char[block_size];
+                if (i == disk)
                 {
                     memset(data_block, 0, block_size);
-                    coef_pow=parity->gf_pow_02(-coef_idx);
+                    coef_pow = parity->gf_pow_02(-coef_idx);
                 }
                 else
                 {
@@ -547,7 +597,7 @@ namespace RAID6
             char parity_block[block_size];
             if (read(disk_q, block, 0, block_size, parity_block))
                 return -1;
-            
+
             // Q+Q_x
             parity->XOR_block(parity_block, new_parity, block_size, parity_block);
 
