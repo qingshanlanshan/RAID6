@@ -6,6 +6,7 @@ This is a toy project implementing RAID6. Folders are used instead of real stora
 This is a header-only library. Include the headers and run the example code below.
 
 ```
+#include <cstring>
 #include <iostream>
 #include "include/RAID6.hpp"
 
